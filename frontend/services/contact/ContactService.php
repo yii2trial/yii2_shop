@@ -3,22 +3,25 @@
 namespace frontend\services\contact;
 
 use frontend\models\ContactForm;
+use yii\mail\MailerInterface;
 
 
 class ContactService
 {
     private $adminEmail;
+    private $mailer;
 
 
-    public function __construct($adminEmail)
+    public function __construct($adminEmail, MailerInterface $mailer)
     {
         $this->adminEmail = $adminEmail;
+        $this->mailer = $mailer;
     }
 
 
     public function send(ContactForm $form): void
     {
-        $sent = \Yii::$app->mailer->compose()
+        $sent = $this->mailer->compose()
             ->setTo($this->adminEmail)
             ->setSubject($form->subject)
             ->setTextBody($form->body)
