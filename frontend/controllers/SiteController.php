@@ -20,6 +20,7 @@ use frontend\services\auth\PasswordResetService;
  */
 class SiteController extends Controller
 {
+    private $signupService;
     private $passwordResetService;
     private $contactService;
 
@@ -27,11 +28,13 @@ class SiteController extends Controller
     public function __construct(
                             $id,
                             $module,
+                            SignupService $signupService,
                             PasswordResetService $passwordResetService,
                             ContactService $contactService,
                             $config = []
     ) {
         parent::__construct($id, $module, $config);
+        $this->signupService = $signupService;
         $this->passwordResetService = $passwordResetService;
         $this->contactService = $contactService;
     }
@@ -175,9 +178,14 @@ class SiteController extends Controller
     {
         $model = new SignupForm();
         if ($model->load(Yii::$app->request->post()) && $model->validate()) {
-            $user = (new SignupService())->signup($model);
-            if (Yii::$app->getUser()->login($user)) {
+            try {
+                $this->signupService->signup($model);
+                Yii::$app->session->setFlash('success', 'Check your email for further instructions.');
                 return $this->goHome();
+
+            } catch (\DomainException $e) {
+                Yii::$app->errorHandler->logException($e);
+                Yii::$app->session->setFlash('error', $e->getMessage());
             }
         }
 
@@ -185,6 +193,22 @@ class SiteController extends Controller
             'model' => $model,
         ]);
     }
+
+
+    public function actionConfirm($token)
+    {
+        try {
+            $this->signupService->confirm($token);
+            Yii::$app->session->setFlash('success', 'Your email is confirmed.');
+            return $this->redirect(['login']);
+
+        } catch (\DomainException $e) {
+            Yii::$app->errorHandler->logException($e);
+            Yii::$app->session->setFlash('error', $e->getMessage());
+            return $this->goHome();
+        }
+    }
+
 
     /**
      * Requests password reset.
